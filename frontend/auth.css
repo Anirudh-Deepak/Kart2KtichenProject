@@ -1,0 +1,109 @@
+/* ---------- AUTH SHARED ---------- */
+body.auth-page {
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 18px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+  padding: 32px 30px 26px;
+  box-sizing: border-box;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+
+.auth-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 26px;
+}
+
+.auth-avatar.user {
+  background: #007bff1a;
+}
+
+.auth-avatar.vendor {
+  background: #28a7451a;
+}
+
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  color: #222;
+}
+
+.auth-subtitle {
+  margin: 0 0 22px;
+  font-size: 0.92rem;
+  color: #666;
+}
+
+/* ---------- FORM ---------- */
+.auth-form input {
+  width: 100%;
+  margin: 8px 0;
+}
+
+/* Checkbox: don't stretch full width */
+.auth-form input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+/* Text + checkbox inline, close together */
+.password-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;          /* small gap between text & checkbox */
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+
+/* Checkbox should remain small and inline */
+.password-toggle input[type="checkbox"] {
+  width: auto;
+  margin-left: 8px;
+}
+
+
+.auth-form button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.auth-msg {
+  margin-top: 8px;
+  font-size: 0.86rem;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 480px) {
+  .auth-card {
+    margin: 20px;
+    padding: 26px 20px 22px;
+  }
+}

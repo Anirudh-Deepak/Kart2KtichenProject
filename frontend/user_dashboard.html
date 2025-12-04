@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>User Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="user_dashboard.css">
+</head>
+<body class="market-bg user-dashboard">
+<div class="card-elevated container-main">
+
+  <div class="ud-top-row">
+    <div>
+      <h2 id="welcomeText"></h2>
+      <p>Phone: <span id="userPhone"></span></p>
+      <p id="viewLocText"></p>
+    </div>
+    <button class="btn btn-danger logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="fVeg" placeholder="Filter by vegetable (e.g., Tomato)">
+
+    <!-- locality filter with suggestions -->
+    <input
+      type="text"
+      id="localityFilter"
+      placeholder="Filter vendors by locality (e.g., T Nagar)"
+      list="chennaiLocalitiesFilter"
+    >
+
+    <input type="number" id="fMinRate" placeholder="Min rate" min="0" step="0.5">
+    <input type="number" id="fMaxRate" placeholder="Max rate" min="0" step="0.5">
+  </div>
+
+  <div class="layout">
+    <div>
+      <table>
+        <thead>
+        <tr>
+          <th>Vendors &amp; Vegetables</th>
+        </tr>
+        </thead>
+        <tbody id="vegTableBody">
+        <tr><td style="text-align:center;color:gray;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cart">
+      <h3>Your Cart</h3>
+      <div id="cartItems"></div>
+
+      <label for="deliveryLocality">Delivery Locality / Address</label>
+      <textarea id="deliveryLocality" rows="3"
+        placeholder="Enter your delivery address / locality (within your registered area)"></textarea>
+
+      <label for="paymentMethod">Payment Method</label>
+      <select id="paymentMethod">
+        <option value="COD">Cash on Delivery (COD)</option>
+        <option value="UPI">UPI</option>
+      </select>
+
+      <p><b>Total:</b> ₹ <span id="cartTotal">0</span></p>
+      <div>
+        <button class="btn btn-secondary" onclick="clearCart()">Clear</button>
+        <button class="btn btn-primary checkout" onclick="checkout()">Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <hr style="margin-top:24px;">
+
+  <h3>My Orders</h3>
+  <div id="ordersList" style="margin-top:8px;">
+    <p style="color:gray;font-size:0.9rem;">Loading your orders...</p>
+  </div>
+
+</div>
+
+<!-- Locality suggestions for filter -->
+<datalist id="chennaiLocalitiesFilter">
+  <option value="T Nagar">
+  <option value="Kodambakkam">
+  <option value="Mylapore">
+  <option value="Triplicane">
+  <option value="Nungambakkam">
+  <option value="Choolaimedu">
+  <option value="Saidapet">
+  <option value="Velachery">
+  <option value="Adyar">
+  <option value="Thiruvanmiyur">
+  <option value="Guindy">
+  <option value="Sholinganallur">
+  <option value="Medavakkam">
+  <option value="Perungudi">
+  <option value="Tambaram">
+  <option value="Chromepet">
+  <option value="Pallavaram">
+  <option value="Anna Nagar">
+  <option value="Mogappair">
+  <option value="Koyambedu">
+  <option value="Vadapalani">
+  <option value="Ambattur">
+  <option value="Avadi">
+  <option value="Royapettah">
+  <option value="Egmore">
+  <option value="Purasaiwalkam">
+  <option value="Kilpauk">
+  <option value="Perambur">
+  <option value="Ayanavaram">
+  <option value="Villivakkam">
+  <option value="Vepery">
+  <option value="Mandaveli">
+  <option value="Besant Nagar">
+  <option value="Porur">
+  <option value="Navalur">
+  <option value="Kelambakkam">
+</datalist>
+
+<script>
+/* -------- SESSION & BASIC INFO -------- */
+const session = JSON.parse(localStorage.getItem('session'));
+if (!session || session.role !== 'user') {
+  window.location.replace('index.html');
+}
+
+document.getElementById('welcomeText').innerText =
+  `Welcome ${session.name || 'User'}!`;
+document.getElementById('userPhone').innerText = session.phone || 'N/A';
+
+const userLocality = (session.locality || '').trim();
+const userLocalityLower = userLocality.toLowerCase();
+
+const viewLocText = document.getElementById('viewLocText');
+
+/* -------- GLOBAL STATE -------- */
+let allItems = [];                // all vegetable entries from backend
+let filtered = [];                // currently filtered items
+let currentLocalityFilter = "";   // set when user types/selects locality
+let userOrders = [];              // order history
+
+function updateViewLocText() {
+  if (currentLocalityFilter) {
+    viewLocText.textContent =
+      `You are currently viewing vendors from: ${currentLocalityFilter}`;
+  } else {
+    viewLocText.textContent = 'You are currently viewing all vendors.';
+  }
+}
+updateViewLocText();
+
+/* -------- FETCH ALL VEGETABLES (ALL AREAS) -------- */
+async function loadVegetables() {
+  try {
+    const res = await fetch('http://localhost:5000/vegetables');
+    const items = await res.json();
+    allItems = items || [];
+    filtered = allItems.slice();
+    renderTable(filtered);
+  } catch (err) {
+    console.error('Error fetching vegetables:', err);
+    const tbody = document.getElementById('vegTableBody');
+    tbody.innerHTML =
+      '<tr><td style="text-align:center;color:red;">Error loading vegetables</td></tr>';
+  }
+}
+
+/* -------- RENDER GROUPED & COLLAPSIBLE -------- */
+function renderTable(list) {
+  const tbody = document.getElementById('vegTableBody');
+  tbody.innerHTML = '';
+
+  if (!list || !list.length) {
+    tbody.innerHTML =
+      '<tr><td style="text-align:center;color:gray;">No vegetables found</td></tr>';
+    return;
+  }
+
+  const groups = {};
+  list.forEach(item => {
+    const v = item.vendor || {};
+    const key = v.phone || ('vendor-' + Math.random());
+    if (!groups[key]) {
+      groups[key] = {
+        vendor: {
+          name: v.name,
+          phone: v.phone,
+          locality: v.locality,
+          scannerCode: v.scannerCode
+        },
+        items: []
+      };
+    }
+    groups[key].items.push(item);
+  });
+
+  Object.entries(groups).forEach(([key, group]) => {
+    const v = group.vendor;
+    const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const vRow = document.createElement('tr');
+    vRow.className = 'vendor-row';
+    vRow.setAttribute('data-vendor', safeKey);
+    vRow.onclick = () => toggleVendor(safeKey);
+
+    vRow.innerHTML = `
+      <td>
+        <div class="vendor-header-line">
+          <div class="vendor-left">
+            <span class="vendor-arrow" id="arrow-${safeKey}">▶</span>
+            <div>
+              <div class="vendor-name">${v.name || 'Vendor'}</div>
+              <div class="vendor-locality">${v.locality || ''}</div>
+              <div class="vendor-meta">
+                Phone: ${v.phone || 'N/A'}
+                ${v.scannerCode ? ' • Scanner: ' + v.scannerCode : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(vRow);
+
+    group.items.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.className = 'veg-row';
+      tr.dataset.vendor = safeKey;
+      tr.style.display = 'none';
+
+      const dto = itemToCartDTO(item);
+      const dtoEncoded = JSON.stringify(dto).replace(/"/g, '&quot;');
+
+      tr.innerHTML = `
+        <td class="veg-cell">
+          <div class="veg-line">
+            <span class="veg-name">${item.name}</span>
+            <span class="veg-rate">₹ ${item.rate}</span>
+            <button class="btn btn-success" onclick='event.stopPropagation(); addToCart(${dtoEncoded})'>
+              Add
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function toggleVendor(key) {
+  const rows = document.querySelectorAll('.veg-row[data-vendor="' + key + '"]');
+  if (!rows.length) return;
+
+  let anyVisible = false;
+  rows.forEach(r => {
+    if (r.style.display !== 'none') anyVisible = true;
+  });
+
+  const newDisplay = anyVisible ? 'none' : 'table-row';
+  rows.forEach(r => { r.style.display = newDisplay; });
+
+  const arrow = document.getElementById('arrow-' + key);
+  if (arrow) arrow.textContent = newDisplay === 'none' ? '▶' : '▼';
+}
+
+function itemToCartDTO(item) {
+  return {
+    vegId: item._id,
+    name: item.name,
+    rate: item.rate,
+    vendorPhone: item.vendor.phone,
+    vendorName: item.vendor.name,
+    vendorLocality: item.vendor.locality,
+    area: item.area
+  };
+}
+
+/* -------- FILTERS (veg + rate + selected locality) -------- */
+function applyFilters() {
+  const fv = (document.getElementById('fVeg').value || '').toLowerCase();
+  const fmin = document.getElementById('fMinRate').value;
+  const fmax = document.getElementById('fMaxRate').value;
+
+  filtered = allItems.filter(it => {
+    const byVeg = !fv || it.name.toLowerCase().includes(fv);
+    const byMin = !fmin || Number(it.rate) >= Number(fmin);
+    const byMax = !fmax || Number(it.rate) <= Number(fmax);
+
+    let byLoc = true;
+    if (currentLocalityFilter) {
+      const vLoc = ((it.vendor && it.vendor.locality) || '').toLowerCase();
+      byLoc = vLoc.includes(currentLocalityFilter.toLowerCase());
+    }
+    return byVeg && byMin && byMax && byLoc;
+  });
+
+  renderTable(filtered);
+}
+
+['fVeg', 'fMinRate', 'fMaxRate'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', applyFilters);
+});
+
+/* -------- LOCALITY FILTER USING DATALIST -------- */
+const locInput = document.getElementById('localityFilter');
+locInput.addEventListener('input', () => {
+  const val = locInput.value.trim();
+
+  if (!val) {
+    currentLocalityFilter = "";
+  } else {
+    currentLocalityFilter = val;
+  }
+
+  updateViewLocText();
+  applyFilters();
+});
+
+/* -------- CART LOGIC (with locality restriction) -------- */
+function getCart() {
+  return JSON.parse(localStorage.getItem('cart') || '[]');
+}
+function setCart(cart) {
+  localStorage.setItem('cart', JSON.stringify(cart));
+  renderCart();
+}
+function addToCart(item) {
+  const vLocLower = (item.vendorLocality || '').toLowerCase();
+  if (userLocalityLower && !vLocLower.includes(userLocalityLower)) {
+    alert('You can only order from vendors in your registered locality: ' + userLocality);
+    return;
+  }
+
+  const cart = getCart();
+  const existing = cart.find(
+    c => c.vegId === item.vegId && c.vendorPhone === item.vendorPhone
+  );
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ ...item, qty: 1 });
+  }
+  setCart(cart);
+}
+function removeFromCart(idx) {
+  const cart = getCart();
+  cart.splice(idx, 1);
+  setCart(cart);
+}
+function updateQty(idx, delta) {
+  const cart = getCart();
+  cart[idx].qty += delta;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  setCart(cart);
+}
+function clearCart() {
+  setCart([]);
+}
+function cartTotal(cart) {
+  return cart.reduce(
+    (sum, it) => sum + (Number(it.rate) * Number(it.qty)),
+    0
+  );
+}
+function renderCart() {
+  const cart = getCart();
+  const wrap = document.getElementById('cartItems');
+  wrap.innerHTML = '';
+  if (!cart.length) {
+    wrap.innerHTML = '<p style="color:gray;">Cart is empty</p>';
+    document.getElementById('cartTotal').innerText = '0';
+    return;
+  }
+  cart.forEach((it, idx) => {
+    const div = document.createElement('div');
+    div.className = 'cart-item';
+    div.innerHTML = `
+      <div>
+        <b>${it.name}</b> • ₹ ${it.rate} • ${it.qty} kg
+        <br><small>${it.vendorName} (${it.vendorLocality})</small>
+      </div>
+      <div>
+        <button class="btn btn-secondary" onclick="updateQty(${idx}, -1)">-</button>
+        <button class="btn btn-secondary" onclick="updateQty(${idx}, +1)">+</button>
+        <button class="btn btn-danger" onclick="removeFromCart(${idx})">x</button>
+      </div>
+    `;
+    wrap.appendChild(div);
+  });
+  document.getElementById('cartTotal').innerText = cartTotal(cart);
+}
+
+/* -------- RESTORE SAVED DELIVERY / PAYMENT -------- */
+const deliveryField = document.getElementById('deliveryLocality');
+if (deliveryField) {
+  deliveryField.value = localStorage.getItem('deliveryLocality') || '';
+}
+const paymentField = document.getElementById('paymentMethod');
+if (paymentField) {
+  paymentField.value = localStorage.getItem('paymentMethod') || 'COD';
+}
+
+/* -------- ORDERS: FETCH & RENDER -------- */
+async function loadUserOrders() {
+  try {
+    const res = await fetch(
+      `http://localhost:5000/user/${encodeURIComponent(session.phone)}/orders`
+    );
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      userOrders = data;
+    } else {
+      userOrders = [];
+    }
+    renderUserOrders();
+  } catch (err) {
+    console.error('Error fetching user orders:', err);
+    const wrap = document.getElementById('ordersList');
+    if (wrap) {
+      wrap.innerHTML =
+        '<p style="color:red;font-size:0.9rem;">Error loading orders</p>';
+    }
+  }
+}
+
+function formatDateTime(dt) {
+  try {
+    return new Date(dt).toLocaleString();
+  } catch {
+    return dt;
+  }
+}
+
+function renderUserOrders() {
+  const wrap = document.getElementById('ordersList');
+  if (!wrap) return;
+
+  if (!userOrders.length) {
+    wrap.innerHTML =
+      '<p style="color:gray;font-size:0.9rem;">No orders placed yet.</p>';
+    return;
+  }
+
+  let html = `
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Placed On</th>
+            <th>Vendor</th>
+            <th>Items</th>
+            <th>Total (₹)</th>
+            <th>Payment</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  userOrders.forEach((o) => {
+    const itemsText = (o.items || [])
+      .map(it => `${it.name} (${it.qty} kg)`)
+      .join(', ');
+
+    html += `
+      <tr>
+        <td>${formatDateTime(o.createdAt)}</td>
+        <td>${o.vendorName || ''}<br>
+            <small>${o.vendorLocality || ''}</small></td>
+        <td>${itemsText}</td>
+        <td>${o.totalAmount}</td>
+        <td>${o.paymentMethod}</td>
+        <td>${o.status}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  wrap.innerHTML = html;
+}
+
+/* -------- CHECKOUT (calls /orders) -------- */
+async function checkout() {
+  const cart = getCart();
+  if (!cart.length) {
+    alert('Cart is empty');
+    return;
+  }
+
+  const localityText =
+    (document.getElementById('deliveryLocality').value || '').trim();
+  const payment = document.getElementById('paymentMethod').value;
+
+  if (!localityText) {
+    alert('Please enter your delivery locality / address');
+    return;
+  }
+
+  if (userLocalityLower &&
+      !localityText.toLowerCase().includes(userLocalityLower)) {
+    alert('Please enter an address within your registered locality: ' + userLocality);
+    return;
+  }
+
+  const total = cartTotal(cart);
+
+  const payload = {
+    user: {
+      name: session.name,
+      phone: session.phone,
+      locality: userLocality
+    },
+    paymentMethod: payment,
+    deliveryAddress: localityText,
+    items: cart
+  };
+
+  try {
+    const res = await fetch('http://localhost:5000/orders', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem('deliveryLocality', localityText);
+      localStorage.setItem('paymentMethod', payment);
+
+      alert(
+        'Order placed successfully!\n\n' +
+        'Items: ' + cart.length + '\n' +
+        'Total: ₹ ' + total + '\n' +
+        'Payment: ' + (payment === 'COD' ? 'Cash on Delivery' : 'UPI') + '\n' +
+        'Delivery: ' + localityText
+      );
+
+      // Clear cart & reload orders
+      clearCart();
+      loadUserOrders();
+    } else {
+      alert(data.error || 'Failed to place order');
+    }
+  } catch (err) {
+    console.error('Error placing order:', err);
+    alert('Server error while placing order');
+  }
+}
+
+/* -------- LOGOUT -------- */
+function logout() {
+  localStorage.removeItem('session');
+  window.location.replace('index.html');
+}
+
+/* -------- INIT -------- */
+loadVegetables();
+renderCart();
+loadUserOrders();
+</script>
+</body>
+</html>

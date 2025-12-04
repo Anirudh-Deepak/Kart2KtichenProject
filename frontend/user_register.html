@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>User Register</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="auth.css">
+</head>
+<body class="market-bg auth-page">
+<div class="auth-card">
+    <div class="auth-avatar user">👤</div>
+    <h2 class="auth-title">User Registration</h2>
+    <p class="auth-subtitle">Create your Kart2Kitchen account to start exploring local vendors.</p>
+
+    <form id="userRegisterForm" class="auth-form">
+        <input type="text" id="name" placeholder="Name" required>
+
+        <input type="text" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'');" required>
+
+        <!-- Locality with suggestions -->
+        <input type="text" id="locality" placeholder="Locality (e.g. T Nagar)" list="chennaiLocalities" required>
+
+        <input type="password" id="password" placeholder="Password" required>
+<div style="text-align:left;margin-top:2px;">
+  <label class="password-toggle">
+    Show Password
+    <input type="checkbox" onclick="togglePassword('password')">
+  </label>
+</div>
+
+
+        <button type="submit" class="btn btn-primary">Register</button>
+        <div id="registerMsg" class="auth-msg"></div>
+    </form>
+
+    <p class="auth-footer">Already have an account? <a href="user_login.html">Login here</a></p>
+</div>
+
+<!-- Chennai locality suggestions -->
+<datalist id="chennaiLocalities">
+  <option value="T Nagar">
+  <option value="Kodambakkam">
+  <option value="Mylapore">
+  <option value="Triplicane">
+  <option value="Nungambakkam">
+  <option value="Choolaimedu">
+  <option value="Saidapet">
+  <option value="Velachery">
+  <option value="Adyar">
+  <option value="Thiruvanmiyur">
+  <option value="Guindy">
+  <option value="Sholinganallur">
+  <option value="Medavakkam">
+  <option value="Semmancheri">
+  <option value="Perungudi">
+  <option value="Tambaram">
+  <option value="Chromepet">
+  <option value="Pallavaram">
+  <option value="Thoraipakkam">
+  <option value="Anna Nagar">
+  <option value="Mogappair">
+  <option value="Koyambedu">
+  <option value="Vadapalani">
+  <option value="Ambattur">
+  <option value="Avadi">
+  <option value="Royapettah">
+  <option value="Egmore">
+  <option value="Purasaiwalkam">
+  <option value="Kilpauk">
+  <option value="Perambur">
+  <option value="Ayanavaram">
+  <option value="Villivakkam">
+  <option value="Vepery">
+  <option value="Mandaveli">
+  <option value="Besant Nagar">
+  <option value="Porur">
+  <option value="Navalur">
+  <option value="Kelambakkam">
+</datalist>
+
+<script>
+function togglePassword(id){
+  const input = document.getElementById(id);
+  if(!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+document.getElementById('userRegisterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const locality = document.getElementById('locality').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const msgEl = document.getElementById('registerMsg');
+    msgEl.textContent = '';
+    msgEl.style.color = '';
+
+    if (phone.length !== 10) {
+        msgEl.textContent = "Phone number must be exactly 10 digits";
+        msgEl.style.color = 'red';
+        return;
+    }
+
+    if (!locality) {
+        msgEl.textContent = "Please select your locality";
+        msgEl.style.color = 'red';
+        return;
+    }
+
+    try {
+        const res = await fetch('http://localhost:5000/user_register', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ name, phone, password, locality })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            msgEl.textContent = data.message || 'Registered successfully';
+            msgEl.style.color = 'green';
+        } else {
+            msgEl.textContent = data.error || 'Registration failed';
+            msgEl.style.color = 'red';
+        }
+    } catch (err) {
+        msgEl.textContent = 'Server error';
+        msgEl.style.color = 'red';
+    }
+});
+</script>
+</body>
+</html>

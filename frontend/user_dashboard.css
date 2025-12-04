@@ -1,0 +1,263 @@
+/* ---------- LAYOUT WRAPPER ---------- */
+.user-dashboard {
+  padding: 24px 10px;
+}
+
+.user-dashboard .container-main {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+/* ---------- TOP ROW ---------- */
+.ud-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ud-top-row h2 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+}
+
+.ud-top-row p {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #555;
+}
+
+#viewLocText {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Logout button */
+.logout-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* ---------- FILTERS ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 16px 0 18px;
+}
+
+.filters input {
+  font-size: 0.9rem;
+}
+
+/* ---------- LAYOUT: LIST + CART ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr;
+  gap: 20px;
+}
+
+/* ---------- TABLE (accordion vendors) ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #007bff;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Vendor row */
+.vendor-row {
+  cursor: pointer;
+}
+
+.vendor-row td {
+  background: #f0f5ff;
+  border-bottom: 1px solid #cbd5ff;
+}
+
+.vendor-row:hover td {
+  background: #e2e9ff;
+}
+
+.vendor-header-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vendor-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vendor-arrow {
+  font-size: 0.9rem;
+}
+
+.vendor-name {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.vendor-locality {
+  font-size: 0.86rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+.vendor-meta {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+/* Vegetable rows */
+.veg-row {
+  display: none;
+}
+
+.veg-cell {
+  background: #ffffff;
+}
+
+.veg-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.veg-name {
+  font-weight: 500;
+}
+
+.veg-rate {
+  margin-right: 8px;
+}
+
+/* Veg add button */
+.veg-line button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+/* ---------- CART ---------- */
+.cart {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 14px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e2e2e2;
+}
+
+.cart h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.cart p {
+  margin: 6px 0;
+  font-size: 0.9rem;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed #ddd;
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
+
+.cart-item small {
+  color: #666;
+}
+
+/* Cart buttons */
+.cart button {
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.cart .checkout {
+  margin-left: 6px;
+}
+
+/* Delivery textarea + payment */
+.cart textarea,
+.cart select {
+  width: 100%;
+  margin: 6px 0;
+}
+
+.cart label {
+  font-size: 0.86rem;
+  color: #444;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-dashboard {
+    padding: 16px 8px;
+  }
+
+  .container-main {
+    padding: 18px 16px 20px;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  table,
+  th,
+  td {
+    font-size: 0.8rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .ud-top-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logout-btn {
+    align-self: stretch;
+    text-align: center;
+  }
+}

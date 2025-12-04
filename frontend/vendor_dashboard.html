@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vendor Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="vendor_dashboard.css">
+</head>
+<body class="market-bg vendor-dashboard">
+<div class="card-elevated container-main">
+    <div class="top-row">
+      <div class="detail">
+        <h2>Welcome, <span id="vendorName"></span>!</h2>
+        <p><b>Phone:</b> <span id="vendorPhone"></span></p>
+        <p><b>Locality:</b> <span id="vendorLocality"></span></p>
+        <p><b>Service:</b> <span id="vendorService"></span></p>
+        <p><b>Scanner Code:</b> <span id="vendorScanner"></span></p>
+      </div>
+      <button class="btn btn-danger logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <hr>
+
+    <h3>Add Vegetable</h3>
+    <div class="form-row">
+      <input type="text" id="vegName" placeholder="Vegetable name (e.g., Tomato)">
+      <input type="number" id="vegRate" placeholder="Rate (per kg)" min="0" step="0.5">
+    </div>
+    <div class="form-row">
+      <!-- Locality auto-filled from vendor profile, no need to type for each vegetable -->
+      <input type="text" id="vegArea" placeholder="Serving locality (auto-filled)" readonly>
+      <button class="btn btn-success btn-primary" onclick="addVegetable()">Add</button>
+    </div>
+
+    <h3 style="margin-top:18px;">Your Vegetables</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Vegetable</th>
+          <th>Rate</th>
+          <th>Area</th>
+          <th>Available</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="vegBody">
+        <tr><td colspan="5" style="text-align:center;color:gray;">Loading...</td></tr>
+      </tbody>
+    </table>
+
+    <hr style="margin-top:24px;">
+
+    <h3>Incoming Orders</h3>
+    <div id="vendorOrdersWrap" style="margin-top:8px;">
+      <p style="color:gray;font-size:0.9rem;">Loading orders...</p>
+    </div>
+</div>
+
+<script>
+const session = JSON.parse(localStorage.getItem('session'));
+if(!session || session.role !== 'vendor'){
+    window.location.href = 'index.html';
+}
+
+document.getElementById('vendorName').innerText = session.name;
+document.getElementById('vendorPhone').innerText = session.phone;
+document.getElementById('vendorLocality').innerText = session.locality;
+document.getElementById('vendorService').innerText = session.service || 'General';
+document.getElementById('vendorScanner').innerText = session.scannerCode || '(will appear after relogin)';
+
+const vegAreaInput = document.getElementById('vegArea');
+if (vegAreaInput) {
+  vegAreaInput.value = session.locality || '';
+}
+
+let myVegetables = [];
+let vendorOrders = [];
+
+async function loadVegetables(){
+  const res = await fetch(`http://localhost:5000/vendor/${encodeURIComponent(session.phone)}/vegetables`);
+  const data = await res.json();
+  myVegetables = data || [];
+  renderTable(myVegetables);
+}
+
+function renderTable(items){
+  const tbody = document.getElementById('vegBody');
+  tbody.innerHTML = '';
+  if(!items || !items.length){
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:gray;">No vegetables added yet</td></tr>';
+    return;
+  }
+  items.forEach(it => {
+    const tr = document.createElement('tr');
+    const isAvailable = it.available !== false;
+    tr.innerHTML = `
+      <td>${it.name}</td>
+      <td>₹ ${it.rate}</td>
+      <td>${it.area}</td>
+      <td>
+        <span class="avail-badge ${isAvailable ? 'avail-true' : 'avail-false'}">
+          ${isAvailable ? 'Yes' : 'No'}
+        </span>
+      </td>
+      <td>
+        <button class="btn-secondary" onclick="editVegetable('${it._id}')">Edit</button>
+        <button class="btn-toggle" onclick="toggleAvailable('${it._id}')">
+          ${isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+        </button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:0.85rem;" onclick="deleteVegetable('${it._id}')">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function addVegetable(){
+  const name = document.getElementById('vegName').value.trim();
+  const rate = document.getElementById('vegRate').value.trim();
+  const area = (document.getElementById('vegArea').value || '').trim() || session.locality;
+
+  if(!name || rate === '' || !area){
+    alert('Please fill all fields');
+    return;
+  }
+
+  const res = await fetch('http://localhost:5000/vendor_add_vegetable', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ phone: session.phone, vegetable: { name, rate: Number(rate), area } })
+  });
+  const data = await res.json();
+  if(res.ok){
+    document.getElementById('vegName').value='';
+    document.getElementById('vegRate').value='';
+    document.getElementById('vegArea').value = session.locality || '';
+    myVegetables = data.vegetables || [];
+    renderTable(myVegetables);
+  } else {
+    alert(data.error || 'Failed to add');
+  }
+}
+
+async function deleteVegetable(vegId){
+  if(!confirm('Delete this item?')) return;
+  const res = await fetch(`http://localhost:5000/vendor/${encodeURIComponent(session.phone)}/vegetables/${vegId}`, {
+    method: 'DELETE'
+  });
+  const data = await res.json();
+  if(res.ok){
+    loadVegetables();
+  } else {
+    alert(data.error || 'Delete failed');
+  }
+}
+
+async function editVegetable(vegId){
+  const veg = myVegetables.find(v => v._id === vegId);
+  if (!veg) return alert('Vegetable not found');
+
+  const newName = prompt('Edit vegetable name:', veg.name);
+  if (newName === null) return;
+
+  const newRateStr = prompt('Edit rate (per kg):', veg.rate);
+  if (newRateStr === null) return;
+
+  const newRate = Number(newRateStr);
+  if (Number.isNaN(newRate) || newRate < 0){
+    alert('Rate must be a non-negative number');
+    return;
+  }
+
+  const res = await fetch(`http://localhost:5000/vendor/${encodeURIComponent(session.phone)}/vegetables/${vegId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ name: newName.trim(), rate: newRate })
+  });
+  const data = await res.json();
+  if(res.ok){
+    loadVegetables();
+  } else {
+    alert(data.error || 'Update failed');
+  }
+}
+
+async function toggleAvailable(vegId){
+  const veg = myVegetables.find(v => v._id === vegId);
+  if (!veg) return alert('Vegetable not found');
+
+  const current = veg.available !== false;
+  const newAvail = !current;
+
+  const res = await fetch(`http://localhost:5000/vendor/${encodeURIComponent(session.phone)}/vegetables/${vegId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ available: newAvail })
+  });
+  const data = await res.json();
+  if(res.ok){
+    loadVegetables();
+  } else {
+    alert(data.error || 'Update failed');
+  }
+}
+
+/* -------- VENDOR ORDERS: FETCH & RENDER -------- */
+async function loadVendorOrders() {
+  try {
+    const res = await fetch(
+      `http://localhost:5000/vendor/${encodeURIComponent(session.phone)}/orders`
+    );
+    const data = await res.json();
+    vendorOrders = Array.isArray(data) ? data : [];
+    renderVendorOrders();
+  } catch (err) {
+    console.error('Error fetching vendor orders:', err);
+    const wrap = document.getElementById('vendorOrdersWrap');
+    if (wrap) {
+      wrap.innerHTML =
+        '<p style="color:red;font-size:0.9rem;">Error loading orders</p>';
+    }
+  }
+}
+
+function formatDateTime(dt) {
+  try {
+    return new Date(dt).toLocaleString();
+  } catch {
+    return dt;
+  }
+}
+
+function renderVendorOrders() {
+  const wrap = document.getElementById('vendorOrdersWrap');
+  if (!wrap) return;
+
+  if (!vendorOrders.length) {
+    wrap.innerHTML =
+      '<p style="color:gray;font-size:0.9rem;">No orders received yet.</p>';
+    return;
+  }
+
+  let html = `
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Placed On</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Total (₹)</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  vendorOrders.forEach((o) => {
+    const itemsText = (o.items || [])
+      .map(it => `${it.name} (${it.qty} kg)`)
+      .join(', ');
+
+    html += `
+      <tr>
+        <td>${formatDateTime(o.createdAt)}</td>
+        <td>${o.userName}<br><small>${o.deliveryAddress}</small></td>
+        <td>${itemsText}</td>
+        <td>${o.totalAmount}</td>
+        <td>${o.paymentMethod}</td>
+        <td>${o.status}</td>
+        <td>
+          <button class="btn-secondary" onclick="updateOrderStatus('${o._id}','ACCEPTED')">Accept</button>
+          <button class="btn-secondary" onclick="updateOrderStatus('${o._id}','COMPLETED')">Complete</button>
+          <button class="btn btn-danger" style="padding:4px 8px;font-size:0.8rem;" onclick="updateOrderStatus('${o._id}','REJECTED')">Reject</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  wrap.innerHTML = html;
+}
+
+async function updateOrderStatus(orderId, newStatus) {
+  if (!confirm('Change order status to ' + newStatus + '?')) return;
+  try {
+    const res = await fetch(`http://localhost:5000/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      loadVendorOrders();
+    } else {
+      alert(data.error || 'Failed to update status');
+    }
+  } catch (err) {
+    console.error('Error updating order status:', err);
+    alert('Server error while updating order');
+  }
+}
+
+function logout(){
+  localStorage.removeItem('session');
+  window.location.href = 'index.html';
+}
+
+loadVegetables();
+loadVendorOrders();
+</script>
+</body>
+</html>

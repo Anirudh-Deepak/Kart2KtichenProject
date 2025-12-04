@@ -1,0 +1,193 @@
+/* ---------- VENDOR DASHBOARD LAYOUT ---------- */
+.vendor-dashboard {
+  padding: 24px 10px;
+}
+
+.vendor-dashboard .container-main {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Top row */
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+h2 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+}
+
+.detail p {
+  margin: 2px 0;
+  font-size: 0.95rem;
+}
+
+.detail b {
+  font-weight: 600;
+}
+
+/* Logout button (reuse .btn & .btn-danger from global) */
+.logout-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Divider */
+.vendor-dashboard hr {
+  margin: 18px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+/* ---------- FORM ROW ---------- */
+h3 {
+  margin: 0 0 10px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.form-row input {
+  flex: 1;
+}
+
+/* readonly area input */
+#vegArea[readonly] {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+/* Buttons */
+.btn-primary {
+  /* already in global, here just ensure spacing if needed */
+}
+
+.btn-secondary {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #17a2b8;
+  color: #fff;
+  border: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: #138496;
+  box-shadow: 0 4px 10px rgba(19, 132, 150, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-toggle {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  background: #ffc107;
+  color: #212529;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn-toggle:hover {
+  background: #e0a800;
+  box-shadow: 0 4px 10px rgba(224, 168, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ---------- TABLE ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #28a745;
+  color: #fff;
+}
+
+tr:nth-child(even) td {
+  background: #f9fff9;
+}
+
+/* availability badge */
+.avail-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.avail-true {
+  background: #d4edda;
+  color: #155724;
+}
+
+.avail-false {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .vendor-dashboard {
+    padding: 16px 8px;
+  }
+
+  .vendor-dashboard .container-main {
+    padding: 18px 16px 20px;
+  }
+
+  .top-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logout-btn {
+    align-self: stretch;
+    text-align: center;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-row input,
+  .form-row button {
+    width: 100%;
+  }
+
+  table,
+  th,
+  td {
+    font-size: 0.8rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

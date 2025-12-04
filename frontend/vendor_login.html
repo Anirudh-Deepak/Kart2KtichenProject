@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vendor Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="auth.css">
+</head>
+<body class="market-bg auth-page">
+<div class="auth-card">
+  <div class="auth-avatar vendor">🧾</div>
+  <h2 class="auth-title">Vendor Login</h2>
+  <p class="auth-subtitle">Login to update your daily prices and vegetables.</p>
+
+  <form id="vendorLoginForm" class="auth-form">
+      <input type="text" id="phone" placeholder="Phone" maxlength="10" pattern="\d{10}"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'');" required>
+
+      <input type="password" id="password" placeholder="Password" required>
+      <div style="text-align:left;font-size:0.85rem;margin-top:2px;">
+        <label><input type="checkbox" onclick="togglePassword('password')"> Show Password</label>
+      </div>
+
+      <button type="submit" class="btn btn-success">Login</button>
+      <div id="msg" class="auth-msg"></div>
+  </form>
+
+  <p class="auth-footer">New vendor? <a href="vendor_register.html">Register here</a></p>
+</div>
+
+<script>
+function togglePassword(id){
+  const input = document.getElementById(id);
+  if(!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+document.getElementById('vendorLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const msgEl = document.getElementById('msg');
+    msgEl.textContent = '';
+    msgEl.style.color = 'red';
+
+    if (phone.length !== 10) {
+        msgEl.textContent = 'Phone number must be exactly 10 digits';
+        return;
+    }
+
+    try {
+        const res = await fetch('http://localhost:5000/vendor_login', {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ phone, password })
+        });
+
+        const data = await res.json();
+        console.log("Login response:", data);
+
+        if (res.ok && data.vendor) {
+            msgEl.textContent = data.message || 'Login successful';
+            msgEl.style.color = 'green';
+
+            const session = {
+                role: 'vendor',
+                name: data.vendor.name,
+                phone: data.vendor.phone,
+                locality: data.vendor.locality,
+                service: data.vendor.service || 'General',
+                scannerCode: data.vendor.scannerCode || ''
+            };
+            localStorage.setItem('session', JSON.stringify(session));
+
+            setTimeout(() => {
+                window.location.replace('vendor_dashboard.html');
+            }, 300);
+        } else {
+            msgEl.textContent = data.error || 'Login failed';
+        }
+    } catch(err){
+        console.error(err);
+        msgEl.textContent = 'Server error';
+    }
+});
+</script>
+</body>
+</html>
