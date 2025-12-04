@@ -3,7 +3,7 @@ HOW TO DOWNLOAD:
 1) Create a folder in the desktop.
 2) Open it's terminal
 3) type the following command.
-4) git clone https://github.com/Anirudh-Deepak/Kart2Kitchen.git
+4) git clone https://github.com/Anirudh-Deepak/Kart2KitchenProject.git
 5) Then OPEN VS CODE
 6) Click on the folder in desktop in that click on Kart2Kitchen folder which has been created inside it.
 7) VS CODE will automatically open the the Kart2Kitchen folder.
