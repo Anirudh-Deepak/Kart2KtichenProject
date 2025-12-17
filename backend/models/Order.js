@@ -26,10 +26,11 @@ const OrderSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true },
 
     paymentMethod: {
-      type: String,
-      enum: ['COD', 'UPI'],
-      default: 'COD'
-    },
+  type: String,
+  enum: ['COD', 'UPI', 'WALLET'], // ✅ ADD WALLET
+  default: 'COD'
+}
+,
 
     deliveryAddress: { type: String, required: true },
 

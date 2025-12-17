@@ -279,6 +279,66 @@ app.post('/user_login', async (req, res) => {
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
+// GET wallet balance
+app.get('/user/:phone/wallet', async (req, res) => {
+  try {
+    const user = await User.findOne({ phone: req.params.phone });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ walletBalance: user.walletBalance });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// ADD money to wallet
+app.post('/user/:phone/wallet/add', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    const user = await User.findOne({ phone: req.params.phone });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.walletBalance += Number(amount);
+    await user.save();
+
+    res.json({
+      message: 'Wallet credited',
+      walletBalance: user.walletBalance
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// DEDUCT money from wallet
+app.post('/user/:phone/wallet/deduct', async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    const user = await User.findOne({ phone: req.params.phone });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.walletBalance < amount) {
+      return res.status(400).json({ error: 'Insufficient wallet balance' });
+    }
+
+    user.walletBalance -= Number(amount);
+    await user.save();
+
+    res.json({
+      message: 'Wallet debited',
+      walletBalance: user.walletBalance
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ==================================================
 //                    COMMON LIST ROUTES

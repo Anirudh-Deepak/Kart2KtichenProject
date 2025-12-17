@@ -50,6 +50,11 @@
 
     <div class="cart">
       <h3>Your Cart</h3>
+      <div id="walletBox" style="margin-bottom:10px;">
+      <p><b>Wallet Balance:</b> ₹ <span id="walletBalance">0</span></p>
+      <button class="btn btn-secondary" onclick="addMoney()">Add ₹100</button>
+    </div>
+
       <div id="cartItems"></div>
 
       <label for="deliveryLocality">Delivery Locality / Address</label>
@@ -60,12 +65,24 @@
       <select id="paymentMethod">
         <option value="COD">Cash on Delivery (COD)</option>
         <option value="UPI">UPI</option>
+        <option value="WALLET">Wallet</option>
       </select>
+      <!-- Payment simulation UI -->
+<div id="paymentSimulator" style="display:none;margin:10px 0;">
+  <p id="paymentText" style="font-size:0.9rem;"></p>
+  <div style="height:6px;background:#eee;border-radius:4px;overflow:hidden;">
+    <div id="paymentBar"
+         style="height:100%;width:0%;background:#28a745;transition:width 0.3s;">
+    </div>
+  </div>
+</div>
+
 
       <p><b>Total:</b> ₹ <span id="cartTotal">0</span></p>
       <div>
         <button class="btn btn-secondary" onclick="clearCart()">Clear</button>
         <button class="btn btn-primary checkout" onclick="checkout()">Checkout</button>
+        <div id="paymentMsg" style="margin-top:10px;font-size:0.9rem;"></div>
       </div>
     </div>
   </div>
@@ -139,7 +156,76 @@ const viewLocText = document.getElementById('viewLocText');
 let allItems = [];                // all vegetable entries from backend
 let filtered = [];                // currently filtered items
 let currentLocalityFilter = "";   // set when user types/selects locality
-let userOrders = [];              // order history
+let userOrders = [];             // order history
+/* -------- WALLET -------- */
+function getWallet() {
+  return Number(localStorage.getItem('walletBalance') || '0');
+}
+
+function setWallet(amount) {
+  localStorage.setItem('walletBalance', amount);
+  updateWalletUI();
+}
+
+function updateWalletUI() {
+  const el = document.getElementById('walletBalance');
+  if (el) el.innerText = getWallet();
+}
+
+function addMoney() {
+  const current = getWallet();
+  setWallet(current + 100); // mock top-up
+  alert('₹100 added to wallet');
+}
+function simulatePayment(method, amount) {
+  return new Promise((resolve, reject) => {
+    const box = document.getElementById('paymentSimulator');
+    const text = document.getElementById('paymentText');
+    const bar = document.getElementById('paymentBar');
+
+    box.style.display = 'block';
+    bar.style.width = '0%';
+    text.innerText = `Processing ${method} payment of ₹${amount}...`;
+
+    let progress = 0;
+
+    const timer = setInterval(() => {
+      progress += 10;
+      bar.style.width = progress + '%';
+
+      if (progress >= 100) {
+        clearInterval(timer);
+
+        const success = true; // DEMO MODE: always succeed
+
+        if (success) {
+          text.innerText = 'Payment successful ✔️';
+          resolve(true);
+        } else {
+          text.innerText = 'Payment failed ❌';
+          reject(false);
+        }
+      }
+    }, 300);
+  });
+}
+
+function refundWallet(amount, orderId) {
+  const refunded = JSON.parse(localStorage.getItem('walletRefunds') || '[]');
+
+  if (refunded.includes(orderId)) {
+    alert('Refund already processed');
+    return;
+  }
+
+  setWallet(getWallet() + amount);
+  refunded.push(orderId);
+  localStorage.setItem('walletRefunds', JSON.stringify(refunded));
+
+  alert(`₹${amount} refunded to wallet`);
+}
+
+
 
 function updateViewLocText() {
   if (currentLocalityFilter) {
@@ -365,6 +451,48 @@ function cartTotal(cart) {
     0
   );
 }
+/* -------- CART REVALIDATION AGAINST LATEST AVAILABILITY -------- */
+async function revalidateCartBeforeCheckout() {
+  try {
+    const res = await fetch('http://localhost:5000/vegetables');
+    const latestItems = await res.json();
+
+    const cart = getCart();
+    const unavailable = [];
+
+    const validCart = cart.filter(cartItem => {
+      const match = latestItems.find(
+        it =>
+          it._id === cartItem.vegId &&
+          it.vendor.phone === cartItem.vendorPhone
+      );
+
+      if (!match) {
+        unavailable.push(cartItem.name + ' (no longer available)');
+        return false;
+      }
+
+      return true;
+    });
+
+    if (unavailable.length) {
+      alert(
+        'Some items are no longer available:\n\n' +
+        unavailable.join('\n') +
+        '\n\nThey will be removed from your cart.'
+      );
+
+      setCart(validCart);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    alert('Could not verify item availability. Please try again.');
+    return false;
+  }
+}
+
 function renderCart() {
   const cart = getCart();
   const wrap = document.getElementById('cartItems');
@@ -473,7 +601,19 @@ function renderUserOrders() {
         <td>${itemsText}</td>
         <td>${o.totalAmount}</td>
         <td>${o.paymentMethod}</td>
-        <td>${o.status}</td>
+        <td>
+  ${o.status}
+  ${
+    o.status === 'REJECTED' && o.paymentMethod === 'WALLET'
+      ? `<br>
+         <button class="btn btn-secondary"
+           onclick="refundWallet(${o.totalAmount}, '${o._id}')">
+           Refund ₹${o.totalAmount}
+         </button>`
+      : ''
+  }
+</td>
+
       </tr>
     `;
   });
@@ -487,17 +627,43 @@ function renderUserOrders() {
   wrap.innerHTML = html;
 }
 
+
 /* -------- CHECKOUT (calls /orders) -------- */
 async function checkout() {
+  const msgBox = document.getElementById('paymentMsg');
+  msgBox.innerHTML = '';
+
   const cart = getCart();
   if (!cart.length) {
     alert('Cart is empty');
     return;
   }
+  const isValid = await revalidateCartBeforeCheckout();
+  if (!isValid) return;
+
 
   const localityText =
     (document.getElementById('deliveryLocality').value || '').trim();
   const payment = document.getElementById('paymentMethod').value;
+  const total = cartTotal(cart);
+  // ---- PAYMENT SIMULATION START ----
+if (payment === 'WALLET') {
+  if (getWallet() < total) {
+    alert('Insufficient wallet balance');
+    return;
+  }
+}
+
+try {
+  await simulatePayment(payment, total);
+
+  if (payment === 'WALLET') {
+    setWallet(getWallet() - total);
+  }
+} catch {
+  return; // stop checkout if payment fails
+}
+// ---- PAYMENT SIMULATION END ----
 
   if (!localityText) {
     alert('Please enter your delivery locality / address');
@@ -510,7 +676,7 @@ async function checkout() {
     return;
   }
 
-  const total = cartTotal(cart);
+  
 
   const payload = {
     user: {
@@ -535,13 +701,17 @@ async function checkout() {
       localStorage.setItem('deliveryLocality', localityText);
       localStorage.setItem('paymentMethod', payment);
 
-      alert(
-        'Order placed successfully!\n\n' +
-        'Items: ' + cart.length + '\n' +
-        'Total: ₹ ' + total + '\n' +
-        'Payment: ' + (payment === 'COD' ? 'Cash on Delivery' : 'UPI') + '\n' +
-        'Delivery: ' + localityText
-      );
+      msgBox.innerHTML = `
+  <div style="color:green;">
+    <b>Payment Successful</b><br>
+    Total: ₹${total}<br>
+    Method: ${payment}<br>
+    Delivery: ${localityText}
+  </div>
+`;
+
+
+
 
       // Clear cart & reload orders
       clearCart();
@@ -565,6 +735,7 @@ function logout() {
 loadVegetables();
 renderCart();
 loadUserOrders();
+updateWalletUI();
 </script>
 </body>
 </html>
