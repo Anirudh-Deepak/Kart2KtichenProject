@@ -20,6 +20,6 @@ IMPORTANT: THE GIVEN PROJECT FILE USES MONGO DB AS THE BACKEND HENCE IT IS VERY 
 
 FOR ENTERING SAMPLE DATA FOR REGISTRATION:
 User Registration:
-Ex: Name->User1 Phone->90000000001 //Exactly 10 digits. Password-> User1
+Ex: Name->User1 Phone->90000000001 //Exactly 10 digits. Password-> User1 Give area of Locality as well.
 Will directly guide to dashboard
 Similar steps for Vendor Registration just specify locality.
